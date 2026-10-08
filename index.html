@@ -114,6 +114,7 @@ body.touch .desk-only { display: none; }
 .slot.sel { border-color: var(--torch); background: rgba(242, 181, 68, 0.16); }
 #water { position: fixed; inset: 0; background: rgba(30, 76, 170, 0.36); pointer-events: none; z-index: 4; }
 #hurt { position: fixed; inset: 0; pointer-events: none; z-index: 4; opacity: 0; transition: opacity 0.45s; background: radial-gradient(ellipse at center, rgba(216, 38, 58, 0) 40%, rgba(216, 38, 58, 0.55) 100%); }
+#sleep { position: fixed; inset: 0; pointer-events: none; z-index: 19; opacity: 0; transition: opacity 0.7s; background: #05070a; }
 #loading { position: fixed; right: 14px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 21; font: 500 12px/1 var(--mono); color: var(--muted); }
 
 /* ---------- inventory ---------- */
@@ -171,6 +172,7 @@ body.touch .desk-only { display: none; }
 <canvas id="game" aria-label="Oyun dünyası"></canvas>
 <div id="water" hidden></div>
 <div id="hurt"></div>
+<div id="sleep"></div>
 <div id="hud" hidden>
   <div id="cross"></div>
   <div id="info" hidden></div>
@@ -249,7 +251,7 @@ body.touch .desk-only { display: none; }
       <div><kbd>W A S D</kbd><span>Yürü · Shift koş</span></div>
       <div><kbd>Boşluk</kbd><span>Zıpla, yüz</span></div>
       <div><kbd>Sol tık</kbd><span>Basılı tut: kaz · vur</span></div>
-      <div><kbd>Sağ tık</kbd><span>Koy, ye, masayı aç</span></div>
+      <div><kbd>Sağ tık</kbd><span>Koy, ye, kullan (masa, yatak, TNT)</span></div>
       <div><kbd>E</kbd><span>Çanta ve üretim</span></div>
       <div><kbd>Q</kbd><span>Elindekini at</span></div>
       <div><kbd>1–9 · Teker</kbd><span>Eşya seç</span></div>
@@ -557,8 +559,8 @@ function VoxelCore(seed, T) {
    Blocks & items
    ===================================================================== */
 const CS = 16, H = 96, SEA = 34, PAD = 8, PS = 32;
-const B = { AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, SAND: 4, WATER: 5, LOG: 6, LEAVES: 7, PLANKS: 8, COBBLE: 9, GLASS: 10, BRICK: 11, BEDROCK: 12, COAL_ORE: 13, SNOW: 14, IRON_ORE: 15, DIAMOND_ORE: 16, TORCH: 17, TABLE: 18, FURNACE: 19, TALLGRASS: 20, ROSE: 21, DANDELION: 22, STONEBRICK: 23 };
-const I = { STICK: 100, COAL: 101, IRON: 102, DIAMOND: 103, APPLE: 104, RAW_PORK: 105, COOKED_PORK: 106, FLESH: 107 };
+const B = { AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, SAND: 4, WATER: 5, LOG: 6, LEAVES: 7, PLANKS: 8, COBBLE: 9, GLASS: 10, BRICK: 11, BEDROCK: 12, COAL_ORE: 13, SNOW: 14, IRON_ORE: 15, DIAMOND_ORE: 16, TORCH: 17, TABLE: 18, FURNACE: 19, TALLGRASS: 20, ROSE: 21, DANDELION: 22, STONEBRICK: 23, TNT: 24, BED: 25, WOOL: 26 };
+const I = { STICK: 100, COAL: 101, IRON: 102, DIAMOND: 103, APPLE: 104, RAW_PORK: 105, COOKED_PORK: 106, FLESH: 107, GUNPOWDER: 108 };
 const PICK = 0, AXE = 1, SHOVEL = 2, SWORD = 3;
 const UNLOADED = 255;
 const DEF = [];
@@ -587,6 +589,9 @@ def(B.TALLGRASS, { n: 'Uzun ot', t: [25, 25, 25], shape: 2, lp: true, solid: fal
 def(B.ROSE, { n: 'Gelincik', t: [26, 26, 26], shape: 2, lp: true, solid: false, hard: 0 });
 def(B.DANDELION, { n: 'Karahindiba', t: [27, 27, 27], shape: 2, lp: true, solid: false, hard: 0 });
 def(B.STONEBRICK, { n: 'Taş tuğla', t: [28, 28, 28], hard: 1.5, tool: PICK, tier: 0 });
+def(B.TNT, { n: 'TNT', t: [30, 30, 29], hard: 0 });
+def(B.BED, { n: 'Yatak', t: [31, 9, 32], hard: 0.2, tool: AXE });
+def(B.WOOL, { n: 'Yün', t: [33, 33, 33], hard: 0.8 });
 def(UNLOADED, { n: 'Yüklenmedi', hard: Infinity, drop: 0 });
 
 const TB = { tiles: new Int16Array(256 * 3), shape: new Uint8Array(256), full: new Uint8Array(256), cut: new Uint8Array(256), lp: new Uint8Array(256), att: new Uint8Array(256), emit: new Uint8Array(256) };
@@ -602,6 +607,7 @@ ITEM[I.APPLE] = { n: 'Elma', food: 4, sat: 2.4 };
 ITEM[I.RAW_PORK] = { n: 'Çiğ domuz eti', food: 3, sat: 1.8 };
 ITEM[I.COOKED_PORK] = { n: 'Pişmiş domuz eti', food: 8, sat: 12.8 };
 ITEM[I.FLESH] = { n: 'Çürük et', food: 4, sat: 0.8 };
+ITEM[I.GUNPOWDER] = { n: 'Barut' };
 const TIER_N = ['Tahta', 'Taş', 'Demir', 'Elmas'], KIND_N = ['kazma', 'balta', 'kürek', 'kılıç'];
 const DUR = [59, 131, 250, 1561], SPEED = [2, 4, 6, 8];
 const toolId = (kind, tier) => 110 + tier * 4 + kind;
@@ -618,6 +624,8 @@ const RECIPES = [
   { out: B.TORCH, n: 4, inp: [[I.COAL, 1], [I.STICK, 1]] },
   { out: B.FURNACE, n: 1, inp: [[B.COBBLE, 8]], st: 'table' },
   { out: B.STONEBRICK, n: 4, inp: [[B.STONE, 4]], st: 'table' },
+  { out: B.BED, n: 1, inp: [[B.WOOL, 3], [B.PLANKS, 3]], st: 'table' },
+  { out: B.TNT, n: 1, inp: [[I.GUNPOWDER, 5], [B.SAND, 4]], st: 'table' },
 ];
 [B.PLANKS, B.COBBLE, I.IRON, I.DIAMOND].forEach((m, tier) => {
   RECIPES.push({ out: toolId(PICK, tier), n: 1, inp: [[m, 3], [I.STICK, 2]], st: 'table' });
@@ -726,6 +734,14 @@ const flower = (petal) => (x, y, r) => {
 paint(26, flower([214, 40, 40]));
 paint(27, flower([246, 214, 50]));
 paint(28, (x, y, r) => (y % 8 === 7 || x === ((y >> 3) % 2 ? 3 : 11)) ? sh(C_STONE, 0.55) : sh(C_STONE, (y % 8 === 0 ? 1.08 : 0.92) + r() * 0.08));
+paint(29, (x, y, r) => {
+  if (y >= 5 && y <= 10) { const on = y >= 6 && y <= 9 && ((x >= 1 && x <= 4 && (y === 6 || x === 2 || x === 3)) || (x >= 6 && x <= 9 && (x === 6 || x === 9 || x - 6 === y - 6)) || (x >= 11 && x <= 14 && (y === 6 || x === 12 || x === 13))); return on ? [30, 30, 30] : [236, 232, 220]; }
+  return sh([206, 52, 40], (x % 4 === 0 ? 0.8 : 1) * (0.9 + r() * 0.15));
+});
+paint(30, (x, y, r) => Math.hypot(x - 7.5, y - 7.5) < 2.2 ? [40, 40, 40] : (x === 0 || y === 0 || x === 15 || y === 15) ? [160, 40, 32] : sh([206, 52, 40], 0.9 + r() * 0.15));
+paint(31, (x, y, r) => y < 5 ? sh([238, 238, 238], 0.94 + r() * 0.06) : (x === 0 || x === 15) ? [150, 24, 30] : sh([196, 34, 42], 0.88 + r() * 0.15));
+paint(32, (x, y, r) => y < 2 ? sh([238, 238, 238], 0.95) : y < 9 ? sh([196, 34, 42], 0.85 + r() * 0.15) : planks(x, y, r));
+paint(33, (x, y, r) => sh([236, 236, 236], ((x + (y >> 1)) % 4 === 0 ? 0.86 : 0.97) + r() * 0.04));
 { // crack stages 48..55
   const r = mulberry32(404), pix = [];
   for (let s = 0; s < 6; s++) { let x = (r() * 16) | 0, y = (r() * 16) | 0; for (let k = 0; k < 14; k++) { pix.push([x, y]); x = Math.max(0, Math.min(15, x + Math.round(r() * 2 - 1))); y = Math.max(0, Math.min(15, y + Math.round(r() * 2 - 1))); } }
@@ -784,6 +800,7 @@ function drawItem(id, set) {
     case I.APPLE: circ(8, 9.5, 5, (x, y) => (x === 6 && (y === 7 || y === 8)) ? [255, 160, 150] : [206, 36, 40]); set(8, 3, [96, 64, 36]); set(8, 4, [96, 64, 36]); set(9, 3, [70, 150, 50]); set(10, 3, [70, 150, 50]); break;
     case I.RAW_PORK: ell(8, 8.5, 6, 4.5, (x, y) => y === 8 ? [252, 196, 200] : [236, 138, 150]); break;
     case I.COOKED_PORK: ell(8, 8.5, 6, 4.5, (x, y) => y === 8 ? [206, 146, 92] : [168, 98, 52]); break;
+    case I.GUNPOWDER: for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if (Math.hypot(x - 8, (y - 10) * 1.5) <= 6 && y >= 5) set(x, y, (x * 7 + y * 5) % 4 === 0 ? [40, 40, 44] : (x + y) % 3 ? [96, 96, 100] : [130, 130, 134]); break;
     case I.FLESH: ell(8, 8.5, 6, 4, (x, y) => (x * 5 + y * 3) % 7 === 0 ? [110, 130, 60] : [146, 92, 62]); break;
   }
 }
@@ -892,7 +909,7 @@ scene.add(clouds);
 
 const C_DAY = new THREE.Color(0x87b8eb), C_NIGHT = new THREE.Color(0x0a1024), C_DUSK = new THREE.Color(0xf08a4b), C_DEEP = new THREE.Color(0x1d3f86);
 const DAY_LEN = 600;
-let dayT = 0.02, daylight = 1, cloudDrift = 0;
+let dayT = 0.02, lastDayT = 0.02, dayCount = 1, daylight = 1, cloudDrift = 0;
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const brightness = (l) => 0.03 + 0.97 * Math.pow(0.86, (1 - l) * 15);
 function updateSky(underwater) {
@@ -1283,7 +1300,7 @@ function damage(n, cause, src) {
   if (player.hp <= 0) die(cause);
 }
 function heal(n) { player.hp = Math.min(20, player.hp + n); drawStats(); }
-const DEATH_MSG = { fall: 'Çok yüksekten düştün.', zombie: 'Bir zombi seni yakaladı.', drown: 'Boğuldun.', starve: 'Açlıktan öldün.', void: 'Dünyanın altına düştün.' };
+const DEATH_MSG = { fall: 'Çok yüksekten düştün.', zombie: 'Bir zombi seni yakaladı.', drown: 'Boğuldun.', starve: 'Açlıktan öldün.', void: 'Dünyanın altına düştün.', explosion: 'Patlamada can verdin.' };
 function die(cause) {
   player.dead = true; player.hp = 0;
   const p = player.pos;
@@ -1403,31 +1420,55 @@ function findSpawn() {
 /* =====================================================================
    Mobs & dropped items
    ===================================================================== */
-const mobs = [], drops = [];
+const mobs = [], drops = [], primed = [];
+const MOB = {
+  zombie: { w: 0.3, h: 1.95, hp: 20, hostile: true, color: 0x5d8c3a },
+  creeper: { w: 0.3, h: 1.7, hp: 20, hostile: true, color: 0x4fa83a },
+  pig: { w: 0.45, h: 0.9, hp: 10, color: 0xf0a5a8 },
+  sheep: { w: 0.45, h: 1.25, hp: 8, color: 0xeeeeee },
+};
+const isHostile = (m) => !!MOB[m.type].hostile;
 function part(geo, mat, x, y, z, parent) { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); parent.add(m); return m; }
+function quadLegs(g, mat, legs, color, w, h, sx, sz) {
+  for (const [lx, lz] of [[-sx, -sz], [sx, -sz], [-sx, sz], [sx, sz]]) {
+    const piv = new THREE.Group(); piv.position.set(lx, h, lz); part(shadedBox(w, h, w, color), mat, 0, -h / 2, 0, piv); g.add(piv); legs.push(piv);
+  }
+}
 function buildMob(type) {
   const g = new THREE.Group(), mat = new THREE.MeshBasicMaterial({ vertexColors: true }), legs = [], arms = [];
+  const eye = (w, h, x, y, z) => part(shadedBox(w, h, 0.02, 0x101010), mat, x, y, z, g);
   if (type === 'zombie') {
     for (const sx of [-0.125, 0.125]) { const piv = new THREE.Group(); piv.position.set(sx, 0.75, 0); part(shadedBox(0.25, 0.75, 0.25, 0x3b3f9c), mat, 0, -0.375, 0, piv); g.add(piv); legs.push(piv); }
     part(shadedBox(0.5, 0.75, 0.26, 0x2f8f8f), mat, 0, 1.125, 0, g);
     for (const sx of [-0.375, 0.375]) { const piv = new THREE.Group(); piv.position.set(sx, 1.4, 0); piv.rotation.x = -Math.PI / 2; part(shadedBox(0.24, 0.72, 0.24, 0x5d8c3a), mat, 0, -0.3, 0, piv); g.add(piv); arms.push(piv); }
     part(shadedBox(0.5, 0.5, 0.5, 0x5d8c3a), mat, 0, 1.75, 0, g);
-    const eye = shadedBox(0.1, 0.06, 0.02, 0x101010);
-    part(eye, mat, -0.11, 1.78, 0.26, g); part(eye, mat, 0.11, 1.78, 0.26, g);
+    eye(0.1, 0.06, -0.11, 1.78, 0.26); eye(0.1, 0.06, 0.11, 1.78, 0.26);
+  } else if (type === 'creeper') {
+    quadLegs(g, mat, legs, 0x3f8f30, 0.24, 0.36, 0.13, 0.13);
+    part(shadedBox(0.5, 0.86, 0.3, 0x4fa83a), mat, 0, 0.79, 0, g);
+    part(shadedBox(0.5, 0.5, 0.5, 0x5cb846), mat, 0, 1.47, 0, g);
+    eye(0.12, 0.12, -0.11, 1.56, 0.26); eye(0.12, 0.12, 0.11, 1.56, 0.26);
+    eye(0.1, 0.14, 0, 1.42, 0.26); eye(0.22, 0.08, 0, 1.33, 0.26);
+  } else if (type === 'sheep') {
+    quadLegs(g, mat, legs, 0xd9c4ab, 0.18, 0.45, 0.19, 0.3);
+    part(shadedBox(0.72, 0.6, 1.0, 0xeeeeee), mat, 0, 0.78, 0, g);
+    part(shadedBox(0.38, 0.38, 0.42, 0xd9c4ab), mat, 0, 1.0, 0.62, g);
+    part(shadedBox(0.44, 0.16, 0.3, 0xeeeeee), mat, 0, 1.2, 0.56, g);
+    eye(0.07, 0.07, -0.1, 1.06, 0.835); eye(0.07, 0.07, 0.1, 1.06, 0.835);
   } else {
-    for (const [sx, sz] of [[-0.17, -0.28], [0.17, -0.28], [-0.17, 0.28], [0.17, 0.28]]) { const piv = new THREE.Group(); piv.position.set(sx, 0.35, sz); part(shadedBox(0.2, 0.35, 0.2, 0xe8959a), mat, 0, -0.175, 0, piv); g.add(piv); legs.push(piv); }
+    quadLegs(g, mat, legs, 0xe8959a, 0.2, 0.35, 0.17, 0.28);
     part(shadedBox(0.6, 0.48, 0.9, 0xf0a5a8), mat, 0, 0.58, 0, g);
     part(shadedBox(0.46, 0.44, 0.4, 0xf0a5a8), mat, 0, 0.74, 0.58, g);
     part(shadedBox(0.22, 0.16, 0.06, 0xd77f86), mat, 0, 0.68, 0.8, g);
-    const eye = shadedBox(0.07, 0.07, 0.02, 0x101010);
-    part(eye, mat, -0.12, 0.82, 0.785, g); part(eye, mat, 0.12, 0.82, 0.785, g);
+    eye(0.07, 0.07, -0.12, 0.82, 0.785); eye(0.07, 0.07, 0.12, 0.82, 0.785);
   }
   scene.add(g);
   return { g, mat, legs, arms };
 }
 function spawnMob(type, x, y, z) {
-  const m = { type, pos: { x, y, z }, vel: { x: 0, y: 0, z: 0 }, w: type === 'pig' ? 0.45 : 0.3, h: type === 'pig' ? 0.9 : 1.95,
-    yaw: Math.random() * 6.28, hp: type === 'pig' ? 10 : 20, onGround: false, hitWall: false, hurt: 0, cd: 0, think: 0, wx: 0, wz: 0, flee: 0, walk: 0, burn: 0, groan: 2 + Math.random() * 6 };
+  const t = MOB[type];
+  const m = { type, pos: { x, y, z }, vel: { x: 0, y: 0, z: 0 }, w: t.w, h: t.h, yaw: Math.random() * 6.28, hp: t.hp, onGround: false, hitWall: false,
+    hurt: 0, cd: 0, think: 0, wx: 0, wz: 0, flee: 0, walk: 0, burn: 0, fuse: 0, hiss: false, groan: 2 + Math.random() * 6 };
   Object.assign(m, buildMob(type));
   mobs.push(m);
 }
@@ -1438,61 +1479,110 @@ function removeMob(m) {
   const i = mobs.indexOf(m); if (i >= 0) mobs.splice(i, 1);
 }
 function killMob(m) {
-  burst(m.pos.x - 0.5, m.pos.y + 0.3, m.pos.z - 0.5, new THREE.Color(m.type === 'pig' ? 0xf0a5a8 : 0x5d8c3a), 16);
+  burst(m.pos.x - 0.5, m.pos.y + 0.3, m.pos.z - 0.5, new THREE.Color(MOB[m.type].color), 16);
+  const x = m.pos.x, y = m.pos.y + 0.5, z = m.pos.z, n = (Math.random() * 3) | 0;
   if (!creative()) {
-    if (m.type === 'pig') dropItem(I.RAW_PORK, 1 + ((Math.random() * 3) | 0), m.pos.x, m.pos.y + 0.5, m.pos.z);
-    else { const n = (Math.random() * 3) | 0; if (n) dropItem(I.FLESH, n, m.pos.x, m.pos.y + 0.5, m.pos.z); }
+    if (m.type === 'pig') dropItem(I.RAW_PORK, 1 + n, x, y, z);
+    else if (m.type === 'sheep') dropItem(B.WOOL, 1 + (n >> 1), x, y, z);
+    else if (m.type === 'creeper') { if (n) dropItem(I.GUNPOWDER, n, x, y, z); }
+    else if (n) dropItem(I.FLESH, n, x, y, z);
   }
   removeMob(m);
 }
-function hitMob(m, dmg) {
+function hitMob(m, dmg, from) {
   m.hp -= dmg; m.hurt = 0.35;
-  const dx = m.pos.x - player.pos.x, dz = m.pos.z - player.pos.z, l = Math.hypot(dx, dz) || 1;
+  const src = from || player.pos, dx = m.pos.x - src.x, dz = m.pos.z - src.z, l = Math.hypot(dx, dz) || 1;
   m.vel.x += dx / l * 7; m.vel.z += dz / l * 7; m.vel.y = 5;
-  if (m.type === 'pig') { m.flee = 4; sfx('pig', m); } else sfx('hit');
+  if (!isHostile(m)) { m.flee = 4; sfx(m.type, m); } else sfx('hit');
   if (m.hp <= 0) killMob(m);
+}
+// ---- explosions & TNT ----
+function explode(x, y, z, r) {
+  const r2 = Math.ceil(r);
+  let dropped = 0;
+  for (let dy = -r2; dy <= r2; dy++) for (let dz = -r2; dz <= r2; dz++) for (let dx = -r2; dx <= r2; dx++) {
+    if (Math.hypot(dx, dy, dz) > r - Math.random() * 0.8) continue;
+    const bx = Math.floor(x) + dx, by = Math.floor(y) + dy, bz = Math.floor(z) + dz, id = getB(bx, by, bz);
+    if (!id || id === B.WATER || id === B.BEDROCK || id === UNLOADED) continue;
+    if (id === B.TNT) { setBlock(bx, by, bz, B.AIR); primeTNT(bx, by, bz, 0.4 + Math.random() * 0.6); continue; }
+    setBlock(bx, by, bz, B.AIR);
+    if (!creative() && DEF[id].drop && dropped < 24 && Math.random() < 0.3) { dropItem(DEF[id].drop, 1, bx + 0.5, by + 0.5, bz + 0.5); dropped++; }
+  }
+  for (let i = 0; i < 4; i++) burst(x - 1 + Math.random(), y - 1 + Math.random(), z - 1 + Math.random(), new THREE.Color(i % 2 ? 0x9a9a9a : 0xf2c14e), 10);
+  sfx('boom');
+  const reach = r * 2;
+  const d = Math.hypot(player.pos.x - x, player.pos.y + 0.9 - y, player.pos.z - z);
+  if (d < reach) { shake = 0.6; damage(Math.round((1 - d / reach) * 18), 'explosion', { pos: { x, y, z } }); }
+  for (const m of mobs.slice()) {
+    const md = Math.hypot(m.pos.x - x, m.pos.y + m.h / 2 - y, m.pos.z - z);
+    if (md < reach) hitMob(m, Math.round((1 - md / reach) * 18), { x, y, z });
+  }
+}
+function primeTNT(x, y, z, fuse) {
+  const obj = new THREE.Mesh(blockGeo(B.TNT), new THREE.MeshBasicMaterial({ map: tex, vertexColors: true }));
+  obj.scale.setScalar(0.98);
+  scene.add(obj);
+  primed.push({ obj, pos: { x: x + 0.5, y, z: z + 0.5 }, vel: { x: (Math.random() - 0.5) * 0.6, y: 3, z: (Math.random() - 0.5) * 0.6 }, w: 0.49, h: 0.98, onGround: false, hitWall: false, fuse });
+  sfx('fuse');
+}
+function updatePrimed(dt, now) {
+  for (let i = primed.length - 1; i >= 0; i--) {
+    const t = primed[i];
+    t.fuse -= dt;
+    t.vel.y -= 22 * dt; if (t.onGround) { t.vel.x *= 0.8; t.vel.z *= 0.8; }
+    moveEntity(t, dt);
+    t.obj.position.set(t.pos.x, t.pos.y + 0.49, t.pos.z);
+    const l = brightness(lightAt(t.pos.x, t.pos.y + 0.5, t.pos.z)), flash = Math.floor(now / 120) % 2 === 0;
+    t.obj.material.color.setScalar(flash ? Math.min(1, l + 0.6) : l);
+    t.obj.scale.setScalar(t.fuse < 0.6 ? 0.98 + (0.6 - t.fuse) * 0.3 : 0.98);
+    if (t.fuse <= 0) { scene.remove(t.obj); t.obj.material.dispose(); primed.splice(i, 1); explode(t.pos.x, t.pos.y + 0.5, t.pos.z, 3.6); }
+  }
 }
 let spawnT = 0;
 function spawnTick(dt) {
   spawnT -= dt; if (spawnT > 0) return; spawnT = 0.7;
-  const hostile = mobs.filter((m) => m.type === 'zombie').length, passive = mobs.length - hostile;
-  const tryType = !creative() && hostile < 8 && Math.random() < 0.6 ? 'zombie' : passive < 6 && daylight > 0.7 ? 'pig' : null;
+  const hostile = mobs.filter(isHostile).length, passive = mobs.length - hostile;
+  let tryType = null;
+  if (!creative() && hostile < 8 && Math.random() < 0.6) tryType = Math.random() < 0.3 ? 'creeper' : 'zombie';
+  else if (passive < 6 && daylight > 0.7) tryType = Math.random() < 0.5 ? 'sheep' : 'pig';
   if (!tryType) return;
+  const hostileType = MOB[tryType].hostile;
   const a = Math.random() * Math.PI * 2, r = 22 + Math.random() * 22;
   const x = Math.floor(player.pos.x + Math.cos(a) * r), z = Math.floor(player.pos.z + Math.sin(a) * r);
   const c = getChunk(x >> 4, z >> 4); if (!c || !c.data || !c.light) return;
-  const yTop = tryType === 'pig' ? H - 2 : Math.min(H - 2, Math.floor(player.pos.y) + 16), yBot = tryType === 'pig' ? SEA : Math.max(2, Math.floor(player.pos.y) - 24);
+  const yTop = hostileType ? Math.min(H - 2, Math.floor(player.pos.y) + 16) : H - 2, yBot = hostileType ? Math.max(2, Math.floor(player.pos.y) - 24) : SEA;
   for (let y = yTop; y > yBot; y--) {
     const below = getB(x, y - 1, z), here = getB(x, y, z);
     if (!TB.full[below] || DEF[here].solid || DEF[getB(x, y + 1, z)].solid || here === B.WATER) continue;
     const v = lightRaw(x, y, z), l = Math.max((v >> 4) * daylight, v & 15);
-    if (tryType === 'zombie') { if (l < 7) { spawnMob('zombie', x + 0.5, y, z + 0.5); return; } continue; }
-    if (below === B.GRASS && (v >> 4) === 15) { spawnMob('pig', x + 0.5, y, z + 0.5); if (Math.random() < 0.5) spawnMob('pig', x + 0.5, y, z + 1.5); }
+    if (hostileType) { if (l < 7) { spawnMob(tryType, x + 0.5, y, z + 0.5); return; } continue; }
+    if (below === B.GRASS && (v >> 4) === 15) { spawnMob(tryType, x + 0.5, y, z + 0.5); if (Math.random() < 0.5) spawnMob(tryType, x + 0.5, y, z + 1.5); }
     return;
   }
 }
 function updateMobs(dt) {
   for (let i = mobs.length - 1; i >= 0; i--) {
-    const m = mobs[i], p = m.pos;
+    const m = mobs[i];
     if (!m) continue;
+    const p = m.pos, hostile = isHostile(m);
     const dx = player.pos.x - p.x, dz = player.pos.z - p.z, dist = Math.hypot(dx, dz);
-    if (dist > 96 || (m.type === 'zombie' && creative())) { removeMob(m); continue; }
+    if (dist > 96 || (hostile && creative())) { removeMob(m); continue; }
     if (!chunkReadyAt(p.x, p.z)) continue;
     m.hurt = Math.max(0, m.hurt - dt); m.cd = Math.max(0, m.cd - dt); m.flee = Math.max(0, m.flee - dt);
     let tx = 0, tz = 0, speed = 0;
-    const chase = m.type === 'zombie' && !player.dead && !creative() && dist < 24 && Math.abs(player.pos.y - p.y) < 12;
-    if (chase) { tx = dx / (dist || 1); tz = dz / (dist || 1); speed = 2.4; }
+    const chase = hostile && !player.dead && !creative() && dist < 24 && Math.abs(player.pos.y - p.y) < 12;
+    if (chase) { tx = dx / (dist || 1); tz = dz / (dist || 1); speed = m.type === 'creeper' ? (m.fuse > 0 ? 0.4 : 2.2) : 2.4; }
     else if (m.flee > 0) { tx = -dx / (dist || 1); tz = -dz / (dist || 1); speed = 4.2; }
     else {
       m.think -= dt;
       if (m.think <= 0) { m.think = 2 + Math.random() * 4; if (Math.random() < 0.6) { const a = Math.random() * Math.PI * 2; m.wx = Math.cos(a); m.wz = Math.sin(a); } else m.wx = m.wz = 0; }
-      tx = m.wx; tz = m.wz; speed = m.type === 'pig' ? 1.3 : 1.2;
+      tx = m.wx; tz = m.wz; speed = hostile ? 1.2 : 1.2;
     }
     const k = 1 - Math.exp(-(m.onGround ? 10 : 2) * dt);
     m.vel.x += (tx * speed - m.vel.x) * k; m.vel.z += (tz * speed - m.vel.z) * k;
     const wet = inWaterAt(p.x, p.y + 0.4, p.z);
     if (wet) m.vel.y = Math.min(m.vel.y + 22 * dt, 2.5); else m.vel.y = Math.max(m.vel.y - 28 * dt, -50);
-    if (m.hitWall && m.onGround && speed > 0) m.vel.y = 8.2;
+    if (m.hitWall && m.onGround && speed > 0.5) m.vel.y = 8.2;
     moveEntity(m, dt);
     if (speed > 0.1 && (tx || tz)) { const ty = Math.atan2(tx, tz); let d = ty - m.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); m.yaw += d * Math.min(1, dt * 8); }
     const hs = Math.hypot(m.vel.x, m.vel.z);
@@ -1503,14 +1593,24 @@ function updateMobs(dt) {
     m.g.position.set(p.x, p.y, p.z); m.g.rotation.y = m.yaw;
     const l = brightness(lightAt(p.x, p.y + m.h * 0.6, p.z));
     if (m.hurt > 0) m.mat.color.setRGB(1, 0.35, 0.35).multiplyScalar(Math.max(0.5, l));
+    else if (m.fuse > 0 && Math.floor(performance.now() / 110) % 2 === 0) m.mat.color.setScalar(Math.min(1.6, l + 0.8));
     else if (m.burn > 0) m.mat.color.setRGB(l * 1.2, l * 0.7, l * 0.4);
     else m.mat.color.setScalar(l);
+    if (m.type === 'creeper') {
+      const close = chase && Math.hypot(dx, player.pos.y - p.y, dz) < 3;
+      if (close) { if (!m.hiss) { m.hiss = true; sfx('fuse', m); } m.fuse += dt; }
+      else { m.fuse = Math.max(0, m.fuse - dt); if (m.fuse === 0) m.hiss = false; }
+      m.g.scale.setScalar(1 + Math.min(1, m.fuse / 1.5) * 0.15);
+      if (m.fuse >= 1.5) { const ex = { x: p.x, y: p.y + 0.8, z: p.z }; removeMob(m); explode(ex.x, ex.y, ex.z, 3); continue; }
+    }
     if (m.type === 'zombie') {
       const v = lightRaw(Math.floor(p.x), Math.floor(p.y + 1.6), Math.floor(p.z));
       m.burn = daylight > 0.8 && (v >> 4) >= 15 && !wet ? 1 : 0;
       if (m.burn) { m.hp -= dt * 1.5; if (Math.random() < dt * 6) burst(p.x - 0.5, p.y + 1, p.z - 0.5, new THREE.Color(0xf2a03a), 1); if (m.hp <= 0) { killMob(m); continue; } }
       if (chase && dist < 1.25 && Math.abs(player.pos.y - p.y) < 1.6 && m.cd <= 0) { m.cd = 1; damage(3, 'zombie', m); }
       m.groan -= dt; if (m.groan <= 0) { m.groan = 5 + Math.random() * 8; if (dist < 20) sfx('zombie', m); }
+    } else if (!hostile) {
+      m.groan -= dt; if (m.groan <= 0) { m.groan = 6 + Math.random() * 10; if (dist < 16) sfx(m.type, m); }
     }
   }
 }
@@ -1630,9 +1730,32 @@ function breakAt(x, y, z, viaTool) {
   if (DEF[above] && (DEF[above].shape === 2 || DEF[above].shape === 3)) breakAt(x, y + 1, z, false);
 }
 const replaceable = (id) => id === B.AIR || id === B.WATER || id === B.TALLGRASS;
+let sleeping = false;
+function sleepInBed(t) {
+  spawnPt = { x: t.x + 0.5, z: t.z + 0.5 };
+  scheduleSave();
+  const night = Math.sin(dayT * Math.PI * 2) < 0.05;
+  if (!night) { toast('Doğma noktan bu yatak oldu. Uyumak için geceyi bekle.'); return; }
+  if (mobs.some((m) => isHostile(m) && Math.hypot(m.pos.x - player.pos.x, m.pos.y - player.pos.y, m.pos.z - player.pos.z) < 10)) { toast('Yakında canavarlar varken uyuyamazsın'); return; }
+  if (sleeping) return;
+  sleeping = true; releaseKeys();
+  const el = $('sleep'); el.style.opacity = '1';
+  setTimeout(() => {
+    if (dayT > 0.5) dayCount++;
+    dayT = 0.01; lastDayT = dayT;
+    for (let i = mobs.length - 1; i >= 0; i--) if (mobs[i].type === 'zombie') removeMob(mobs[i]);
+    el.style.opacity = '0'; sleeping = false;
+    toast(`Günaydın! ${dayCount}. gün başladı`); save();
+  }, 1600);
+}
 function useAction() {
   const s = held();
-  if (target && (target.id === B.TABLE || target.id === B.FURNACE) && !(keys.ShiftLeft || keys.ShiftRight)) { openInv(); return; }
+  const sneak = keys.ShiftLeft || keys.ShiftRight;
+  if (target && !sneak) {
+    if (target.id === B.TABLE || target.id === B.FURNACE) { openInv(); return; }
+    if (target.id === B.TNT) { setBlock(target.x, target.y, target.z, B.AIR); primeTNT(target.x, target.y, target.z, 3); swing = 1; return; }
+    if (target.id === B.BED) { sleepInBed(target); return; }
+  }
   if (s && ITEM[s.id] && ITEM[s.id].food) {
     if (creative() || player.hunger >= 20) { toast('Karnın tok'); return; }
     if (eatCd > 0) return;
@@ -1837,8 +1960,8 @@ function renderRecipes() {
     recipesEl.append(b);
   }
 }
-const PALETTE = [B.GRASS, B.DIRT, B.STONE, B.COBBLE, B.STONEBRICK, B.SAND, B.GLASS, B.BRICK, B.LOG, B.PLANKS, B.LEAVES, B.SNOW, B.COAL_ORE, B.IRON_ORE, B.DIAMOND_ORE, B.TORCH, B.TABLE, B.FURNACE, B.TALLGRASS, B.ROSE, B.DANDELION, B.BEDROCK,
-  I.STICK, I.COAL, I.IRON, I.DIAMOND, I.APPLE, I.RAW_PORK, I.COOKED_PORK, I.FLESH];
+const PALETTE = [B.GRASS, B.DIRT, B.STONE, B.COBBLE, B.STONEBRICK, B.SAND, B.GLASS, B.BRICK, B.LOG, B.PLANKS, B.LEAVES, B.SNOW, B.COAL_ORE, B.IRON_ORE, B.DIAMOND_ORE, B.TORCH, B.TABLE, B.FURNACE, B.TALLGRASS, B.ROSE, B.DANDELION, B.WOOL, B.BED, B.TNT, B.BEDROCK,
+  I.STICK, I.COAL, I.IRON, I.DIAMOND, I.GUNPOWDER, I.APPLE, I.RAW_PORK, I.COOKED_PORK, I.FLESH];
 for (let t = 0; t < 4; t++) for (let k = 0; k < 4; k++) PALETTE.push(toolId(k, t));
 function renderPalette() {
   paletteEl.innerHTML = '';
@@ -1922,6 +2045,9 @@ function sfx(kind, src) {
     case 'craft': tone('triangle', 520, 780, 0.08, 0.1); tone('triangle', 780, 1040, 0.08, 0.1, 0.08); break;
     case 'zombie': tone('sawtooth', 95, 62, 0.7, 0.07 * vol); break;
     case 'pig': tone('square', 420, 300, 0.16, 0.06 * vol); tone('square', 380, 280, 0.12, 0.05 * vol, 0.18); break;
+    case 'sheep': tone('sawtooth', 330, 300, 0.35, 0.04 * vol); break;
+    case 'fuse': noise(1.2, 4000, 0.12 * vol); break;
+    case 'boom': noise(0.9, 120, 0.9); noise(0.5, 420, 0.5); tone('sine', 90, 30, 0.6, 0.4); break;
   }
 }
 
@@ -1933,7 +2059,7 @@ function snapshot() {
   const ed = {};
   for (const [k, m] of edits) if (m.size) ed[k] = [...m];
   return {
-    v: 2, seed, mode, spawn: spawnPt, pos: [player.pos.x, player.pos.y, player.pos.z], yaw: player.yaw, pitch: player.pitch, t: dayT, fly: player.fly,
+    v: 2, seed, mode, spawn: spawnPt, pos: [player.pos.x, player.pos.y, player.pos.z], yaw: player.yaw, pitch: player.pitch, t: dayT, day: dayCount, fly: player.fly,
     hp: player.hp, hunger: player.hunger, sat: player.sat, air: player.air, dead: player.dead,
     inv: inv.map((s) => s ? [s.id, s.n, s.d || 0] : 0), slot, edits: ed, rd: renderDist, sound: soundOn,
   };
@@ -1991,7 +2117,7 @@ function setMode(m, announce) {
   $('mSurv').setAttribute('aria-pressed', String(m === 'survival'));
   $('mCrea').setAttribute('aria-pressed', String(m === 'creative'));
   if (m === 'survival') player.fly = false;
-  else { player.hp = 20; player.hunger = 20; player.air = 15; for (let i = mobs.length - 1; i >= 0; i--) if (mobs[i].type === 'zombie') removeMob(mobs[i]); }
+  else { player.hp = 20; player.hunger = 20; player.air = 15; for (let i = mobs.length - 1; i >= 0; i--) if (isHostile(mobs[i])) removeMob(mobs[i]); }
   drawStats(); syncTouchUI();
   if (announce) { toast(m === 'creative' ? 'Yaratıcı mod' : 'Hayatta kalma modu'); scheduleSave(); }
 }
@@ -2119,9 +2245,13 @@ function frame(now) {
   if (ready && pendingSpawn) placeOnSurface();
   updateDragHold();
   if (active && ready && !pendingSpawn) { updatePlayer(dt); survivalTick(dt); }
-  if (active) { updateMobs(dt); spawnTick(dt); updateDrops(dt, now); }
+  if (active) { updateMobs(dt); spawnTick(dt); updateDrops(dt, now); updatePrimed(dt, now); }
   else if (state === 'menu' && !reduceMotion) player.yaw += dt * 0.04;
-  if (state !== 'paused' && state !== 'loading') dayT = (dayT + dt / DAY_LEN) % 1;
+  if (state !== 'paused' && state !== 'loading') {
+    dayT = (dayT + dt / DAY_LEN) % 1;
+    if (dayT < lastDayT) { dayCount++; if (state === 'playing') toast(`${dayCount}. gün`); }
+    lastDayT = dayT;
+  }
   cloudDrift = (cloudDrift + dt * 0.0016) % 1;
 
   shake = Math.max(0, shake - dt);
@@ -2162,7 +2292,7 @@ function frame(now) {
     let meshed = 0; for (const c of chunks.values()) if (c.meshS || c.meshW) meshed++;
     infoEl.textContent =
       `XYZ    ${player.pos.x.toFixed(1)} / ${player.pos.y.toFixed(1)} / ${player.pos.z.toFixed(1)}\n` +
-      `Saat   ${hh}:${mm}   ${fps} FPS\n` +
+      `Gün    ${dayCount}   Saat ${hh}:${mm}   ${fps} FPS\n` +
       `Bölge  ${bio}   Işık gök ${v >> 4} · blok ${v & 15}\n` +
       `Parça  ${meshed} çizili / ${chunks.size} yüklü   ${pool.sync ? 'tek iş parçacığı' : pool.workers.length + ' işçi'}\n` +
       `Canlı  ${mobs.length}   Yerde eşya ${drops.length}\n` +
@@ -2172,6 +2302,7 @@ function frame(now) {
 
 function resetEntities() {
   while (mobs.length) removeMob(mobs[0]);
+  while (primed.length) { const t = primed.pop(); scene.remove(t.obj); t.obj.material.dispose(); }
   while (drops.length) { const d = drops.pop(); scene.remove(d.obj); d.obj.material.dispose(); }
 }
 function setupWorld(s) {
@@ -2187,7 +2318,7 @@ function newWorld(s) {
   spawnPt = findSpawn();
   player.pos = { x: spawnPt.x, y: H - 2, z: spawnPt.z }; pendingSpawn = true;
   Object.assign(player, { vel: { x: 0, y: 0, z: 0 }, fly: false, hp: 20, hunger: 20, sat: 5, exh: 0, air: 15, dead: false, fallStart: null });
-  inv.fill(null); slot = 0; dayT = 0.02;
+  inv.fill(null); slot = 0; dayT = lastDayT = 0.02; dayCount = 1;
   invChanged(); drawStats();
   save();
 }
@@ -2210,7 +2341,8 @@ function start(data) {
     const p = saved.pos || [spawnPt.x, H - 2, spawnPt.z];
     player.pos = { x: p[0], y: p[1], z: p[2] }; pendingSpawn = !saved.pos;
     Object.assign(player, { yaw: saved.yaw || 0, pitch: saved.pitch || 0, fly: !!saved.fly, hp: saved.hp != null ? saved.hp : 20, hunger: saved.hunger != null ? saved.hunger : 20, sat: saved.sat || 0, air: saved.air != null ? saved.air : 15, dead: !!saved.dead });
-    if (typeof saved.t === 'number') dayT = saved.t;
+    if (typeof saved.t === 'number') dayT = lastDayT = saved.t;
+    dayCount = saved.day || 1;
     (saved.inv || []).forEach((s, i) => { inv[i] = s && (isBlock(s[0]) || ITEM[s[0]]) ? { id: s[0], n: s[1], d: s[2] } : null; });
     slot = saved.slot >= 0 && saved.slot < 9 ? saved.slot : 0;
     setMode(saved.mode === 'creative' ? 'creative' : 'survival');

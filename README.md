@@ -10,7 +10,8 @@ Tarayıcıda çalışan, sıfırdan yazılmış Minecraft benzeri bir voksel oyu
 - **Hayatta kalma modu:** Can, açlık ve hava göstergeleri. Düşme hasarı ve boğulma var; açlık ve tokluk sistemi işler.
 - **Kazma:** Bloklar sertliğe ve alete göre sürede kırılır. Kırılma çatlakları görünür, eşyalar yere düşer ve toplanır.
 - **Üretim:** Elde, çalışma masasında ve fırında toplam 32 tarif var. Tahta, taş, demir ve elmas kazma, balta, kürek ve kılıç yapılabilir. Aletlerin dayanıklılığı vardır.
-- **Canlılar:** Gece ya da karanlıkta zombiler çıkar ve gün ışığında yanar. Domuzlar et düşürür.
+- **Canlılar:** Gece ya da karanlıkta zombiler ve creeper'lar çıkar. Zombiler gün ışığında yanar; creeper'lar yaklaşınca patlar ve barut düşürür. Domuzlar et, koyunlar yün düşürür.
+- **TNT ve yatak:** Barut ve kumdan TNT yapılır, sağ tıkla ateşlenir; patlamalar zincirleme olur. Yün ve tahtadan yatak yapılır; yatakta uyumak geceyi atlatır ve doğma noktasını kaydeder. Gün sayacı vardır.
 - **Işık:** Gökyüzü ışığı ve meşale ışığı taşmalı (flood-fill) aydınlatmayla hesaplanır. Yumuşak gölgeleme ve ortam gölgesi (AO) vardır.
 - **Yaratıcı mod:** Tüm eşyalar sınırsız, uçma serbest.
 - Gece-gündüz döngüsü, sentezlenmiş sesler, dokunmatik kontroller, otomatik kayıt.
