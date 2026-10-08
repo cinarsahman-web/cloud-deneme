@@ -13,6 +13,13 @@ Tarayıcıda çalışan, sıfırdan yazılmış Minecraft benzeri bir voksel oyu
 - **Canlılar:** Gece ya da karanlıkta zombiler ve creeper'lar çıkar. Zombiler gün ışığında yanar; creeper'lar yaklaşınca patlar ve barut düşürür. Domuzlar et, koyunlar yün düşürür.
 - **TNT ve yatak:** Barut ve kumdan TNT yapılır, sağ tıkla ateşlenir; patlamalar zincirleme olur. Yün ve tahtadan yatak yapılır; yatakta uyumak geceyi atlatır ve doğma noktasını kaydeder. Gün sayacı vardır.
 - **Işık:** Gökyüzü ışığı ve meşale ışığı taşmalı (flood-fill) aydınlatmayla hesaplanır. Yumuşak gölgeleme ve ortam gölgesi (AO) vardır.
+- **Tarım:** Çapayla toprağı sür, uzun otlardan çıkan tohumları ek. Buğday birkaç dakikada olgunlaşır; 3 buğdaydan ekmek yapılır.
+- **Fidan:** Yapraklardan fidan düşer; dikilen fidan bir süre sonra ağaca dönüşür.
+- **Sandık:** 27 yuvalı depolama. Kırılınca içindekiler yere düşer.
+- **Zırh:** Demir ve elmas zırh, canavar, patlama, lav ve kaktüs hasarını azaltır.
+- **Lav, obsidyen ve kova:** Derin mağaralarda lav gölleri var. Kovayla su taşınır; suyu lava dökünce obsidyen oluşur (kırmak için elmas kazma gerekir).
+- **Çölde kaktüs:** Dokununca can yakar.
+- **Hava durumu:** Arada bir yağmur yağar, karlı dağlarda kar olur; yağmurda zombiler yanmaz.
 - **Yaratıcı mod:** Tüm eşyalar sınırsız, uçma serbest.
 - Gece-gündüz döngüsü, sentezlenmiş sesler, dokunmatik kontroller, otomatik kayıt.
 
