@@ -20,6 +20,7 @@ Tarayıcıda çalışan, sıfırdan yazılmış Minecraft benzeri bir voksel oyu
 - **Lav, obsidyen ve kova:** Derin mağaralarda lav gölleri var. Kovayla su taşınır; suyu lava dökünce obsidyen oluşur (kırmak için elmas kazma gerekir).
 - **Çölde kaktüs:** Dokununca can yakar.
 - **Hava durumu:** Arada bir yağmur yağar, karlı dağlarda kar olur; yağmurda zombiler yanmaz.
+- **Çok oyunculu:** Menüden bir dünya adı yazıp "Ortak dünyaya katıl" ile aynı dünyaya giren herkes birlikte oynar. Oyuncular birbirini isimleriyle görür; bloklar, sandıklar, saat, hava ve uyku herkes için ortaktır; T ile sohbet, hayatta kalma modunda oyuncular birbirine vurabilir. Sonradan katılan, önceki tüm değişiklikleri görür. claude.ai'de yayınlanan sürümde `room`, `db` ve `user` yetenekleriyle çalışır; canavarlar ve yere düşen eşyalar her oyuncunun kendi ekranındadır.
 - **Yaratıcı mod:** Tüm eşyalar sınırsız, uçma serbest.
 - Gece-gündüz döngüsü, sentezlenmiş sesler, dokunmatik kontroller, otomatik kayıt.
 
@@ -38,4 +39,5 @@ Tarayıcıda çalışan, sıfırdan yazılmış Minecraft benzeri bir voksel oyu
 ```
 npm pack three@0.128.0 && tar xzf three-0.128.0.tgz package/build/three.min.js
 node tests/full_test.js
+node tests/multiplayer_test.js   # çok oyunculu: room/db/user taklidiyle birden çok sekme
 ```

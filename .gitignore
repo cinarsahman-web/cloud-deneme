@@ -3,3 +3,4 @@ three-*.tgz
 tests/shots/
 tests/game_under_test.html
 tests/results.json
+tests/game_under_test_mp.html

@@ -120,6 +120,24 @@ body.touch .desk-only { display: none; }
 #armorSlot .slot { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.08); }
 #hurt { position: fixed; inset: 0; pointer-events: none; z-index: 4; opacity: 0; transition: opacity 0.45s; background: radial-gradient(ellipse at center, rgba(216, 38, 58, 0) 40%, rgba(216, 38, 58, 0.55) 100%); }
 #sleep { position: fixed; inset: 0; pointer-events: none; z-index: 19; opacity: 0; transition: opacity 0.7s; background: #05070a; }
+/* ---------- multiplayer ---------- */
+.mp { display: grid; gap: 8px; padding-top: 4px; border-top: 2px dashed var(--edge); }
+.mp-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.mp input { flex: 1 1 140px; min-width: 0; font: 500 15px/1 var(--mono); color: var(--text); background: var(--panel); border: 2px solid var(--edge); padding: 10px 12px; border-radius: 2px; }
+.mp input:focus-visible { outline: 2px solid var(--torch); outline-offset: 2px; }
+#plist { position: fixed; right: 12px; top: calc(12px + env(safe-area-inset-top, 0px)); z-index: 5; pointer-events: none; background: var(--panel); padding: 8px 10px; border-right: 3px solid var(--torch); font: 500 12px/1.6 var(--mono); color: var(--text); text-align: right; max-width: 44vw; }
+#plist b { display: block; font: 700 13px/1.3 var(--display); color: var(--torch); }
+#plist span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#plist i { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 1px; }
+body.touch #plist { top: calc(60px + env(safe-area-inset-top, 0px)); }
+#chatLog { position: fixed; left: 12px; bottom: calc(120px + env(safe-area-inset-bottom, 0px)); z-index: 6; pointer-events: none; display: grid; gap: 3px; max-width: min(460px, calc(100vw - 24px)); }
+#chatLog p { margin: 0; padding: 3px 8px; background: rgba(8, 12, 10, 0.62); font: 500 13px/1.4 var(--body); color: var(--text); overflow-wrap: anywhere; transition: opacity 0.6s; }
+#chatLog p.sys { color: var(--torch); }
+#chatLog p strong { font-weight: 600; margin-right: 6px; }
+#chatLog p.old { opacity: 0; }
+body.chatting #chatLog p.old { opacity: 1; }
+#chatBox { position: fixed; left: 12px; right: 12px; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); z-index: 16; display: flex; gap: 8px; max-width: 560px; }
+#chatBox input { flex: 1; min-width: 0; font: 500 15px/1 var(--body); color: var(--text); background: rgba(8, 12, 10, 0.88); border: 2px solid var(--torch); padding: 10px 12px; }
 #loading { position: fixed; right: 14px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 21; font: 500 12px/1 var(--mono); color: var(--muted); }
 
 /* ---------- inventory ---------- */
@@ -182,6 +200,8 @@ body.touch .desk-only { display: none; }
   <div id="cross"></div>
   <div id="info" hidden></div>
   <div id="toast"></div>
+  <div id="plist" hidden></div>
+  <div id="chatLog" aria-live="polite"></div>
   <div id="bottom">
     <div id="stats">
       <canvas id="hearts" width="180" height="18" aria-label="Can"></canvas>
@@ -199,6 +219,7 @@ body.touch .desk-only { display: none; }
     <button id="tJump" type="button">Zıpla</button>
   </div>
   <div id="ttop">
+    <button id="tChat" type="button" class="btn ghost small" hidden>Sohbet</button>
     <button id="tInv" type="button" class="btn ghost small">Çanta</button>
     <button id="tMenu" type="button" class="btn ghost small">Menü</button>
   </div>
@@ -253,6 +274,17 @@ body.touch .desk-only { display: none; }
       <button id="play" class="btn" type="button" disabled>Yükleniyor…</button>
       <button id="newWorld" class="btn ghost" type="button">Yeni dünya</button>
     </div>
+    <div class="mp" id="mpBox">
+      <p class="eyebrow">Çok oyunculu</p>
+      <div class="mp-row" id="mpJoinRow">
+        <input id="mpCode" maxlength="24" value="ortak" aria-label="Ortak dünyanın adı" autocomplete="off" spellcheck="false">
+        <button id="mpJoin" class="btn ghost" type="button">Ortak dünyaya katıl</button>
+      </div>
+      <div class="mp-row" id="mpLeaveRow" hidden>
+        <button id="mpLeave" class="btn ghost" type="button">Tek oyunculuya dön</button>
+      </div>
+      <p class="note" id="mpNote">Aynı dünya adını yazan herkes aynı dünyada buluşur. Bu sayfayı paylaştığın kişiler katılabilir.</p>
+    </div>
     <dl class="keys desk-only">
       <div><kbd>W A S D</kbd><span>Yürü · Shift koş</span></div>
       <div><kbd>Boşluk</kbd><span>Zıpla, yüz</span></div>
@@ -263,12 +295,14 @@ body.touch .desk-only { display: none; }
       <div><kbd>1–9 · Teker</kbd><span>Eşya seç</span></div>
       <div><kbd>F</kbd><span>Uç (yaratıcı)</span></div>
       <div><kbd>F3</kbd><span>Bilgi paneli</span></div>
+      <div><kbd>T</kbd><span>Sohbet (çevrimiçi)</span></div>
       <div><kbd>Esc</kbd><span>Duraklat</span></div>
     </dl>
     <p class="note touch-only">Sol daireyle yürü, ekranı sürükleyerek bak. Kır modunda ekrana basılı tutunca kazarsın, dokununca vurursun. Koy modunda dokunuş blok koyar ya da yemek yer.</p>
     <p class="note">İpucu: Ağaç kes, kütükten tahta, tahtadan çalışma masası yap. İlerlemen bu tarayıcıda otomatik kaydedilir.</p>
   </div>
 </div>
+<form id="chatBox" hidden><input id="chatInput" maxlength="200" autocomplete="off" placeholder="Mesaj yaz, Enter ile gönder" aria-label="Sohbet mesajı"><button class="btn small" type="submit">Gönder</button></form>
 <div id="loading" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -1210,7 +1244,7 @@ function schedule() {
     if (!c.data) { pending++; if (!c.genReq && !requestGen(c)) break; continue; }
     if (d <= renderDist + 0.5 && c.needMesh && !c.meshBusy && neighborsReady(c)) { pending++; if (!requestMesh(c)) break; }
   }
-  loadingEl.hidden = pending === 0 || state === 'playing' || state === 'inventory';
+  loadingEl.hidden = pending === 0 || state === 'playing' || state === 'inventory' || state === 'chat';
   if (!loadingEl.hidden) loadingEl.textContent = 'Dünya yükleniyor…';
 }
 function unloadFar() {
@@ -1239,6 +1273,7 @@ function setBlock(x, y, z, id) {
   if (!edits.has(k)) edits.set(k, new Map());
   edits.get(k).set(li, id);
   markDirty(x, z);
+  if (mp && !applyingRemote) mpLocalEdit(c.cx, c.cz, li, x, y, z, id);
   scheduleSave();
   return true;
 }
@@ -1432,7 +1467,7 @@ function damage(n, cause, src) {
   if (player.hp <= 0) die(cause);
 }
 function heal(n) { player.hp = Math.min(20, player.hp + n); drawStats(); }
-const DEATH_MSG = { fall: 'Çok yüksekten düştün.', zombie: 'Bir zombi seni yakaladı.', drown: 'Boğuldun.', starve: 'Açlıktan öldün.', void: 'Dünyanın altına düştün.', explosion: 'Patlamada can verdin.', lava: 'Lavda yandın.', cactus: 'Kaktüse fazla yaklaştın.' };
+const DEATH_MSG = { fall: 'Çok yüksekten düştün.', zombie: 'Bir zombi seni yakaladı.', drown: 'Boğuldun.', starve: 'Açlıktan öldün.', void: 'Dünyanın altına düştün.', explosion: 'Patlamada can verdin.', lava: 'Lavda yandın.', cactus: 'Kaktüse fazla yaklaştın.', player: 'Başka bir oyuncu seni yendi.' };
 function die(cause) {
   player.dead = true; player.hp = 0;
   const p = player.pos;
@@ -1836,6 +1871,22 @@ function attackMob() {
   camera.getWorldDirection(dirV);
   let best = null, bd = 3.6;
   for (const m of mobs) { const t = rayBox(camera.position, dirV, m); if (t !== null && t < bd) { bd = t; best = m; } }
+  let bestRemote = null;
+  if (mp) for (const [peer, r] of remotes) {
+    if (r.dead || r.creative) continue;
+    const t = rayBox(camera.position, dirV, { pos: r.pos, w: 0.3, h: 1.8 });
+    if (t !== null && t < bd) { bd = t; best = null; bestRemote = peer; }
+  }
+  if (bestRemote) {
+    if (target && target.dist < bd) return false;
+    if (attackCd > 0) return true;
+    attackCd = 0.45; swing = 1;
+    const t = toolOf(heldId());
+    const dmg = !t ? 1 : t.kind === SWORD ? 4 + t.tier : t.kind === AXE ? 3 + t.tier : t.kind === PICK ? 2 + t.tier : 1.5 + t.tier * 0.5;
+    mp.room.emit('hit', { to: bestRemote, dmg, fx: player.pos.x, fz: player.pos.z }).catch(() => {});
+    sfx('hit'); if (t) wearTool(t.kind === SWORD ? 1 : 2);
+    return true;
+  }
   if (!best || (target && target.dist < bd)) return false;
   if (attackCd > 0) return true;
   attackCd = 0.45; swing = 1;
@@ -1885,6 +1936,7 @@ function dropChest(x, y, z) {
   if (!arr) return;
   for (const s of arr) if (s) dropItem(s.id, s.n, x + 0.5, y + 0.6, z + 0.5, undefined, undefined, undefined, s.d);
   chests.delete(k); scheduleSave();
+  if (mp) mpChestDelete(k);
 }
 const replaceable = (id) => id === B.AIR || id === B.WATER || id === B.LAVA || id === B.TALLGRASS;
 let sleeping = false;
@@ -1898,6 +1950,12 @@ function sleepInBed(t) {
   sleeping = true; releaseKeys();
   const el = $('sleep'); el.style.opacity = '1';
   setTimeout(() => {
+    if (mp) {
+      const t0 = Date.now() / 1000 - (dayCount + 0.01) * DAY_LEN;
+      mp.world = { ...mp.world, t0 }; mp.wref.update({ t0 }).catch(() => {});
+      el.style.opacity = '0'; sleeping = false; toast('Günaydın! Herkes için sabah oldu'); save();
+      return;
+    }
     if (dayT > 0.5) dayCount++;
     dayT = 0.01; lastDayT = dayT; rain = false; rainLevel = 0;
     for (let i = mobs.length - 1; i >= 0; i--) if (mobs[i].type === 'zombie') removeMob(mobs[i]);
@@ -2123,7 +2181,7 @@ function drawStats() {
 const invEl = $('inv'), storeEl = $('store'), barEl = $('bar'), recipesEl = $('recipes'), paletteEl = $('palette'), cursorEl = $('cursor');
 let nearCache = { table: false, furnace: false };
 const invSlotEls = [], chestEls = [], chestGridEl = $('chestGrid');
-let openChest = null;
+let openChest = null, openChestKey = null;
 function mkSlot(parent, onDown) {
   const b = document.createElement('button'); b.type = 'button'; b.className = 'slot';
   b.addEventListener('pointerdown', (e) => { e.preventDefault(); onDown(e); });
@@ -2161,6 +2219,7 @@ function slotClick(arr, i, e) {
   else if (s.id === cursor.id && maxStack(s.id) > 1) { const t = Math.min(cursor.n, maxStack(s.id) - s.n); s.n += t; cursor.n -= t; if (!cursor.n) cursor = null; }
   else { arr[i] = cursor; cursor = s; }
   updateCursor(e); invChanged();
+  if (mp && openChest && arr === openChest) mpChestChanged(openChestKey);
 }
 function updateCursor(e) {
   cursorEl.hidden = !cursor;
@@ -2220,6 +2279,7 @@ function renderInv() {
 function openInv(chestK) {
   if (state !== 'playing') return;
   if (chestK) { if (!chests.has(chestK)) chests.set(chestK, new Array(27).fill(null)); openChest = chests.get(chestK); } else openChest = null;
+  openChestKey = chestK || null;
   state = 'inventory'; releaseKeys();
   nearCache = { table: nearBlock(B.TABLE), furnace: nearBlock(B.FURNACE) };
   const cr = creative();
@@ -2236,7 +2296,8 @@ function openInv(chestK) {
 function closeInv() {
   if (state !== 'inventory') return;
   if (cursor) { const c = cursor; cursor = null; updateCursor(); const left = addItem(c.id, c.n, c.d); if (left) dropItem(c.id, left, player.pos.x, player.pos.y + 1.4, player.pos.z); }
-  invEl.hidden = true; openChest = null; scheduleSave();
+  if (mp && openChestKey) mpChestChanged(openChestKey);
+  invEl.hidden = true; openChest = null; openChestKey = null; scheduleSave();
   play();
 }
 $('invClose').addEventListener('click', closeInv);
@@ -2317,11 +2378,29 @@ function snapshot() {
     growing: [...growing], rain, rainTimer,
   };
 }
-function save() { if (state === 'loading') return; try { localStorage.setItem(SAVE_KEY, JSON.stringify(snapshot())); } catch (e) { /* storage unavailable */ } }
+function playerSnapshot() {
+  return {
+    v: 2, mode, spawn: spawnPt, pos: [player.pos.x, player.pos.y, player.pos.z], yaw: player.yaw, pitch: player.pitch, fly: player.fly,
+    hp: player.hp, hunger: player.hunger, sat: player.sat, air: player.air, dead: player.dead,
+    inv: inv.map((s) => s ? [s.id, s.n, s.d || 0] : 0), slot, armor: armor[0] ? [armor[0].id, 1, armor[0].d] : 0, growing: [...growing],
+  };
+}
+function save() {
+  if (state === 'loading') return;
+  try {
+    if (mp) localStorage.setItem(mpSaveKey(), JSON.stringify(playerSnapshot()));
+    else localStorage.setItem(SAVE_KEY, JSON.stringify(snapshot()));
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ rd: renderDist, sound: soundOn, last: lastMpCode }));
+  } catch (e) { /* storage unavailable */ }
+}
+const SETTINGS_KEY = 'blok-diyari-settings', MP_KEY = 'blok-diyari-mp-';
+let lastMpCode = 'ortak';
+const mpSaveKey = () => MP_KEY + mp.code + (mp.uid ? '-' + mp.uid : '');
+function loadJSON(k) { try { const s = localStorage.getItem(k); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
 function loadSave() { try { const s = localStorage.getItem(SAVE_KEY); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
 let saveTimer = 0;
 function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(save, 1000); }
-setInterval(() => { if (state === 'playing' || state === 'inventory') save(); }, 8000);
+setInterval(() => { if (state === 'playing' || state === 'inventory' || state === 'chat') save(); }, 8000);
 addEventListener('visibilitychange', () => { if (document.hidden) save(); });
 
 /* =====================================================================
@@ -2346,7 +2425,8 @@ function lockFailed() {
   toast('Bakmak için sürükle, kazmak için basılı tut');
 }
 function pause() {
-  if (state !== 'playing' && state !== 'inventory') return;
+  if (state !== 'playing' && state !== 'inventory' && state !== 'chat') return;
+  if (state === 'chat') { chatBox.hidden = true; document.body.classList.remove('chatting'); }
   if (state === 'inventory') { invEl.hidden = true; if (cursor) { const c = cursor; cursor = null; updateCursor(); addItem(c.id, c.n, c.d); } }
   state = 'paused'; releaseKeys(); save();
   if (document.pointerLockElement) document.exitPointerLock();
@@ -2393,6 +2473,8 @@ newBtn.addEventListener('click', () => {
 });
 
 addEventListener('keydown', (e) => {
+  if (state === 'chat') return;
+  if (state === 'playing' && e.code === 'KeyT' && mp && !e.repeat) { e.preventDefault(); openChat(); return; }
   if (state === 'inventory') {
     if (e.code === 'KeyE' || e.code === 'Escape') { e.preventDefault(); closeInv(); }
     return;
@@ -2483,6 +2565,371 @@ $('tInv').addEventListener('click', () => openInv());
 $('tMenu').addEventListener('click', pause);
 
 /* =====================================================================
+   Multiplayer: `room` for live presence and moments, `db` for the shared world
+   ===================================================================== */
+let mp = null, applyingRemote = false, capRoom = null, capDb = null, capUser = null, capsPromise = null;
+const remotes = new Map();
+const chatLog = $('chatLog'), chatBox = $('chatBox'), chatInput = $('chatInput'), plistEl = $('plist');
+const mpNote = $('mpNote'), mpJoinBtn = $('mpJoin');
+const NB = CS * CS * H;
+function loadCaps() {
+  if (capsPromise) return capsPromise;
+  const c = window.claude;
+  if (!c || typeof c.use !== 'function') return (capsPromise = Promise.resolve());
+  capsPromise = Promise.all([c.use('room'), c.use('db'), c.use('user')]).then(([r, d, u]) => { capRoom = r; capDb = d; capUser = u; }).catch(() => {});
+  return capsPromise;
+}
+loadCaps();
+const cleanCode = (v) => (String(v || '').toLowerCase().replace(/ı/g, 'i').replace(/[^a-z0-9_-]/g, '').replace(/^[^a-z0-9]+/, '').slice(0, 24)) || 'ortak';
+const chunkDocId = (cx, cz) => `${cx}_${cz}`;
+const chestDocId = (k) => k.replace(/,/g, '_');
+function renderMpBox() {
+  $('mpJoinRow').hidden = !!mp; $('mpLeaveRow').hidden = !mp; newBtn.hidden = !!mp;
+  plistEl.hidden = !mp; $('tChat').hidden = !mp;
+  if (mp) mpNote.textContent = `Çevrimiçi dünya “${mp.code}”. Sohbet için T. Bloklar, sandıklar ve saat herkesle paylaşılır; canavarlar ve yere düşen eşyalar herkesin kendi ekranında.`;
+}
+function setMpNote(t) { mpNote.textContent = t; }
+async function joinShared(raw) {
+  const code = cleanCode(raw);
+  mpJoinBtn.disabled = true; setMpNote('Bağlanılıyor…');
+  try {
+    await loadCaps();
+    if (!capRoom || !capDb) { setMpNote('Çok oyunculu bu görünümde açılamadı. Oyunu claude.ai üzerinde, giriş yapmış olarak aç; arkadaşlarınla paylaşmak için sayfanın Paylaş menüsünü kullan.'); return; }
+    save();
+    const uid = capUser ? await capUser.id() : null;
+    const wref = capDb.doc('worlds/' + code);
+    let snap = await wref.get();
+    if (!snap.exists || !Number.isFinite((snap.data() || {}).seed)) {
+      const lease = await wref.acquire({ holder: uid || 'p' + Math.random().toString(36).slice(2), ttlMs: 5000 });
+      snap = await wref.get();
+      if (lease.acquired && (!snap.exists || !Number.isFinite((snap.data() || {}).seed))) {
+        const s = Math.floor(Math.random() * 1e9);
+        core = VoxelCore(s, TB);
+        const sp = findSpawn();
+        await wref.set({ seed: s, t0: Date.now() / 1000 - DAY_LEN * 0.02, spawn: sp, created: Date.now() });
+      } else if (!lease.acquired) await new Promise((r) => setTimeout(r, 1500));
+      snap = await wref.get();
+    }
+    const w = snap.exists ? snap.data() : null;
+    if (!w || !Number.isFinite(w.seed)) { setMpNote('Dünya bilgisi okunamadı. Biraz sonra tekrar dene.'); return; }
+    const room = await capRoom.join('w-' + code);
+    lastMpCode = code; $('mpCode').value = code;
+    mp = { code, uid, room, wref, world: { seed: w.seed, t0: Number(w.t0) || Date.now() / 1000, spawn: w.spawn }, pend: new Map(), exist: new Set(),
+      chestPend: new Map(), chestTimers: new Map(), unsubs: [], flushT: 0, flushing: false, warned: false, presT: 0, presLast: '', swingN: 0, lastSwing: 0, names: {}, nameT: 0 };
+    setupWorld(w.seed); edits.clear(); chests.clear(); growing.clear(); resetEntities();
+    spawnPt = w.spawn && Number.isFinite(w.spawn.x) ? { x: w.spawn.x, z: w.spawn.z } : findSpawn();
+    applyPlayerSave(loadJSON(mpSaveKey()));
+    await new Promise((res) => {
+      let first = true;
+      const done = () => { if (first) { first = false; res(); } };
+      mp.unsubs.push(capDb.collection(`worlds/${code}/chunks`).onSnapshot((qs) => { onChunkDocs(qs); done(); }, (e) => { mpDbError(e); done(); }));
+      setTimeout(done, 8000);
+    });
+    mp.unsubs.push(capDb.collection(`worlds/${code}/chests`).onSnapshot(onChestDocs, mpDbError));
+    mp.unsubs.push(wref.onSnapshot((sn) => { const d = sn.exists ? sn.data() : null; if (mp && d && Number.isFinite(d.t0)) mp.world = { ...mp.world, t0: d.t0 }; }, mpDbError));
+    mp.unsubs.push(room.on('blk', onRemoteBlk));
+    mp.unsubs.push(room.on('chat', onChat));
+    mp.unsubs.push(room.on('hit', onHit));
+    mp.unsubs.push(room.onPeers(onPeersChange));
+    $('seedLbl').textContent = `Çevrimiçi dünya · ${code}`;
+    chatLog.textContent = '';
+    renderMpBox(); renderHotbar(); setHand(heldId()); drawStats();
+    playBtn.textContent = 'Oyna';
+    addChat(null, `“${code}” dünyasına bağlandın. Sohbet için T.`, true);
+    save();
+    play();
+  } catch (e) {
+    setMpNote('Bağlanılamadı (' + ((e && e.code) || 'hata') + '). Biraz sonra tekrar dene.');
+    if (mp) leaveShared();
+  } finally { mpJoinBtn.disabled = false; }
+}
+function leaveShared() {
+  if (!mp) return;
+  save();
+  for (const u of mp.unsubs) try { u(); } catch (e) { /* ignore */ }
+  mp.room.leave().catch(() => {});
+  for (const r of remotes.values()) removeRemote(r);
+  remotes.clear();
+  mp = null;
+  chatLog.textContent = '';
+  loadSingle(loadJSON(SAVE_KEY));
+  renderHotbar(); setHand(heldId()); drawStats(); renderMpBox();
+  setMpNote('Tek oyunculu dünyana döndün.');
+  playBtn.textContent = 'Devam et';
+}
+mpJoinBtn.addEventListener('click', () => joinShared($('mpCode').value));
+$('mpCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); joinShared($('mpCode').value); } });
+$('mpLeave').addEventListener('click', leaveShared);
+function mpDbError(e) {
+  if (!mp || mp.warned) return;
+  mp.warned = true;
+  addChat(null, 'Ortak dünyayla bağlantıda sorun var; değişikliklerin herkese ulaşmayabilir.', true);
+}
+// ---- blocks ----
+function applyRemoteEdit(cx, cz, li, id) {
+  if (!Number.isInteger(cx) || !Number.isInteger(cz) || !Number.isInteger(li) || li < 0 || li >= NB) return;
+  if (!Number.isInteger(id) || id < 0 || id === UNLOADED || (id !== 0 && !DEF[id])) return;
+  const k = ckey(cx, cz);
+  const pend = mp && mp.pend.get(chunkDocId(cx, cz));
+  if (pend && pend[li] !== undefined) return;
+  if (!edits.has(k)) edits.set(k, new Map());
+  edits.get(k).set(li, id);
+  const c = chunks.get(k);
+  if (c && c.data && c.data[li] !== id) {
+    c.data[li] = id;
+    markDirty(cx * CS + (li % CS), cz * CS + (((li / CS) | 0) % CS));
+  }
+}
+function onChunkDocs(qs) {
+  for (const ch of qs.docChanges()) {
+    if (ch.type === 'removed') continue;
+    const id = ch.doc.id, parts = id.split('_');
+    if (parts.length !== 2) continue;
+    const cx = Number(parts[0]), cz = Number(parts[1]);
+    mp.exist.add(id);
+    const e = (ch.doc.data() || {}).e;
+    if (e && typeof e === 'object') for (const li in e) applyRemoteEdit(cx, cz, Number(li), e[li]);
+  }
+}
+function onRemoteBlk(m) {
+  if (!mp || m.sameTab || !m.data) return;
+  const { x, y, z, id } = m.data;
+  if (![x, y, z].every(Number.isInteger) || y < 0 || y >= H) return;
+  applyRemoteEdit(x >> 4, z >> 4, (y * CS + (z & 15)) * CS + (x & 15), id);
+}
+function mpLocalEdit(cx, cz, li, x, y, z, id) {
+  const k = chunkDocId(cx, cz);
+  let p = mp.pend.get(k); if (!p) { p = {}; mp.pend.set(k, p); }
+  p[li] = id;
+  mp.room.emit('blk', { x, y, z, id }).catch(() => {});
+  if (!mp.flushT) mp.flushT = setTimeout(mpFlush, 300);
+}
+async function mpFlush() {
+  if (!mp) return;
+  const m = mp; m.flushT = 0;
+  if (m.flushing) { m.flushT = setTimeout(mpFlush, 300); return; }
+  m.flushing = true;
+  try {
+    while (m.pend.size && mp === m) {
+      const [k, p] = m.pend.entries().next().value;
+      const ref = capDb.doc(`worlds/${m.code}/chunks/${k}`);
+      try {
+        if (m.exist.has(k)) await ref.update({ e: p });
+        else {
+          const [cx, cz] = k.split('_').map(Number), all = {};
+          const local = edits.get(ckey(cx, cz));
+          if (local) for (const [li, id] of local) all[li] = id;
+          Object.assign(all, p);
+          await ref.set({ e: all });
+          m.exist.add(k);
+        }
+        if (m.pend.get(k) === p) m.pend.delete(k);
+      } catch (e) {
+        if (e && e.code === 'invalid_argument' && m.exist.has(k)) { m.exist.delete(k); continue; }
+        m.pend.delete(k);
+        if (!m.warned) { m.warned = true; addChat(null, e && e.code === 'quota_exceeded' ? 'Ortak dünyanın kayıt alanı doldu; yeni değişiklikler kaydedilemiyor.' : 'Bu dünyada yaptığın değişiklikler kaydedilemiyor (izin yok ya da bağlantı sorunu).', true); }
+      }
+    }
+  } finally { m.flushing = false; }
+}
+// ---- chests ----
+function onChestDocs(qs) {
+  for (const ch of qs.docChanges()) {
+    const key = ch.doc.id.replace(/_/g, ',');
+    if (!/^-?\d+,-?\d+,-?\d+$/.test(key) || mp.chestPend.has(key)) continue;
+    if (ch.type === 'removed') { chests.delete(key); continue; }
+    const sl = (ch.doc.data() || {}).s;
+    if (!Array.isArray(sl)) continue;
+    let arr = chests.get(key);
+    if (!arr) { arr = new Array(27).fill(null); chests.set(key, arr); }
+    for (let i = 0; i < 27; i++) {
+      const v = validSlot(sl[i]);
+      arr[i] = v && Number.isInteger(v.n) && v.n > 0 && v.n <= 64 ? v : null;
+    }
+    if (state === 'inventory' && openChest === arr) renderInv();
+  }
+}
+function mpChestChanged(key) {
+  if (!mp || !key) return;
+  mp.chestPend.set(key, true);
+  clearTimeout(mp.chestTimers.get(key));
+  const m = mp;
+  m.chestTimers.set(key, setTimeout(async () => {
+    const arr = chests.get(key);
+    try { if (arr) await capDb.doc(`worlds/${m.code}/chests/${chestDocId(key)}`).set({ s: arr.map((s) => s ? [s.id, s.n, s.d || 0] : 0) }); }
+    catch (e) { mpDbError(e); }
+    finally { m.chestPend.delete(key); }
+  }, 400));
+}
+function mpChestDelete(key) {
+  if (!mp) return;
+  clearTimeout(mp.chestTimers.get(key)); mp.chestPend.delete(key);
+  capDb.doc(`worlds/${mp.code}/chests/${chestDocId(key)}`).delete().catch(() => {});
+}
+// ---- people ----
+const SKIN = 0xd9a27a;
+function makeRemote() {
+  const g = new THREE.Group(), mat = new THREE.MeshBasicMaterial({ vertexColors: true }), shirtMat = new THREE.MeshBasicMaterial({ color: 0x3aa0c8 });
+  const legs = [], arms = [];
+  for (const sx of [-0.125, 0.125]) { const piv = new THREE.Group(); piv.position.set(sx, 0.75, 0); part(shadedBox(0.25, 0.75, 0.25, 0x3b3f9c), mat, 0, -0.375, 0, piv); g.add(piv); legs.push(piv); }
+  const body = new THREE.Mesh(shadedBox(0.5, 0.75, 0.26, 0xffffff), shirtMat); body.position.set(0, 1.125, 0); g.add(body);
+  for (const sx of [-0.375, 0.375]) { const piv = new THREE.Group(); piv.position.set(sx, 1.45, 0); part(shadedBox(0.24, 0.72, 0.24, SKIN), mat, 0, -0.3, 0, piv); g.add(piv); arms.push(piv); }
+  const head = new THREE.Group(); head.position.set(0, 1.5, 0); g.add(head);
+  part(shadedBox(0.5, 0.5, 0.5, SKIN), mat, 0, 0.25, 0, head);
+  part(shadedBox(0.52, 0.14, 0.52, 0x4a2f1b), mat, 0, 0.46, 0, head);
+  part(shadedBox(0.08, 0.06, 0.02, 0x1a2a6a), mat, -0.11, 0.27, 0.26, head); part(shadedBox(0.08, 0.06, 0.02, 0x1a2a6a), mat, 0.11, 0.27, 0.26, head);
+  const tagCanvas = document.createElement('canvas'); tagCanvas.width = 256; tagCanvas.height = 48;
+  const tagTex = new THREE.CanvasTexture(tagCanvas); tagTex.minFilter = THREE.LinearFilter;
+  const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: tagTex, depthTest: false, transparent: true }));
+  tag.scale.set(1.6, 0.3, 1); tag.position.set(0, 2.25, 0); tag.renderOrder = 5; g.add(tag);
+  scene.add(g);
+  return { g, mat, shirtMat, legs, arms, head, tag, tagCanvas, tagTex, name: null, pos: null, yaw: 0, tgt: null, yawT: 0, pitch: 0, walk: 0, swing: 0, sw: 0, dead: false, creative: false, by: null };
+}
+function drawTag(r, name) {
+  if (r.name === name) return;
+  r.name = name;
+  const x = r.tagCanvas.getContext('2d');
+  x.clearRect(0, 0, 256, 48);
+  x.font = '600 26px "IBM Plex Sans", system-ui, sans-serif';
+  const w = Math.min(248, x.measureText(name).width + 20);
+  x.fillStyle = 'rgba(8,12,10,0.6)'; x.fillRect(128 - w / 2, 4, w, 40);
+  x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(name, 128, 25, 236);
+  r.tagTex.needsUpdate = true;
+}
+function removeRemote(r) {
+  scene.remove(r.g);
+  r.g.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
+  r.mat.dispose(); r.shirtMat.dispose(); r.tagTex.dispose(); r.tag.material.dispose();
+}
+function peerName(by) { return (by && mp && mp.names[by]) || 'Oyuncu'; }
+async function refreshNames(extra) {
+  if (!mp || !capUser) return;
+  const ids = [...remotes.values()].map((r) => r.by).concat(extra || []).filter(Boolean);
+  if (mp.uid) ids.push(mp.uid);
+  if (!ids.length) return;
+  try {
+    const ps = await capUser.profiles(ids);
+    if (!mp) return;
+    for (const id of ids) { const p = ps[id]; if (p) { mp.names[id] = p.name || 'Oyuncu'; mp.colors = mp.colors || {}; mp.colors[id] = p.color; } }
+  } catch (e) { /* names are optional */ }
+}
+function updateRemotes(dt) {
+  const seen = new Set();
+  for (const p of mp.room.peers()) {
+    if (p.sameTab || p.kind !== 'viewer') continue;
+    const pr = p.presence || {};
+    if (![pr.x, pr.y, pr.z].every(Number.isFinite)) continue;
+    seen.add(p.peer);
+    let r = remotes.get(p.peer);
+    if (!r) { r = makeRemote(); remotes.set(p.peer, r); mp.nameT = 0; }
+    r.by = p.by; r.tgt = { x: pr.x, y: pr.y, z: pr.z }; r.yawT = Number(pr.yw) || 0; r.pitch = Math.max(-1.5, Math.min(1.5, Number(pr.pt) || 0));
+    r.dead = !!pr.dd; r.creative = !!pr.md;
+    if (pr.sw !== r.sw) { r.sw = pr.sw; r.swing = 1; }
+    if (!r.pos) r.pos = { ...r.tgt };
+  }
+  for (const [k, r] of remotes) if (!seen.has(k)) { removeRemote(r); remotes.delete(k); }
+  for (const r of remotes.values()) {
+    const k = 1 - Math.exp(-12 * dt), ox = r.pos.x, oz = r.pos.z;
+    r.pos.x += (r.tgt.x - r.pos.x) * k; r.pos.y += (r.tgt.y - r.pos.y) * k; r.pos.z += (r.tgt.z - r.pos.z) * k;
+    if (Math.hypot(r.tgt.x - r.pos.x, r.tgt.z - r.pos.z) > 8) r.pos = { ...r.tgt };
+    let d = r.yawT - r.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); r.yaw += d * k;
+    const sp = Math.hypot(r.pos.x - ox, r.pos.z - oz) / Math.max(dt, 1e-3);
+    r.walk += dt * Math.min(sp, 6) * 3.2;
+    const sw = Math.sin(r.walk) * Math.min(1, sp / 3) * 0.7;
+    r.legs[0].rotation.x = sw; r.legs[1].rotation.x = -sw;
+    r.swing = Math.max(0, r.swing - dt * 4.5);
+    r.arms[0].rotation.x = -sw * 0.6; r.arms[1].rotation.x = sw * 0.6 - Math.sin(r.swing * Math.PI) * 1.4;
+    r.head.rotation.x = -r.pitch;
+    r.g.visible = !r.dead;
+    r.g.position.set(r.pos.x, r.pos.y, r.pos.z); r.g.rotation.y = r.yaw + Math.PI;
+    const l = brightness(lightAt(r.pos.x, r.pos.y + 1.2, r.pos.z));
+    r.mat.color.setScalar(l);
+    const col = r.by && mp.colors && mp.colors[r.by];
+    r.shirtMat.color.set(col || '#3aa0c8').multiplyScalar(l);
+    drawTag(r, peerName(r.by));
+  }
+}
+function mpTick(dt, now) {
+  if (swing > mp.lastSwing + 0.5) mp.swingN++;
+  mp.lastSwing = swing;
+  mp.presT -= dt;
+  if (mp.presT <= 0) {
+    mp.presT = 0.1;
+    const pr = { x: +player.pos.x.toFixed(2), y: +player.pos.y.toFixed(2), z: +player.pos.z.toFixed(2), yw: +player.yaw.toFixed(2), pt: +player.pitch.toFixed(2), sw: mp.swingN, dd: player.dead ? 1 : 0, md: creative() ? 1 : 0 };
+    const key = JSON.stringify(pr);
+    if (key !== mp.presLast) { mp.presLast = key; mp.room.presence(pr).catch(() => {}); }
+  }
+  mp.nameT -= dt;
+  if (mp.nameT <= 0) { mp.nameT = 3; refreshNames(); renderPlayerList(); }
+}
+function renderPlayerList() {
+  if (!mp) return;
+  plistEl.textContent = '';
+  const b = document.createElement('b'); b.textContent = `${mp.code} · ${remotes.size + 1} oyuncu`; plistEl.append(b);
+  const row = (name, color) => { const s = document.createElement('span'); const i = document.createElement('i'); i.style.background = color || '#3aa0c8'; s.append(i, document.createTextNode(name)); plistEl.append(s); };
+  row(((mp.uid && mp.names[mp.uid]) || 'Sen') + ' (sen)', mp.uid && mp.colors && mp.colors[mp.uid]);
+  for (const r of remotes.values()) row(peerName(r.by), r.by && mp.colors && mp.colors[r.by]);
+}
+function onPeersChange(ch) {
+  if (!mp) return;
+  const ids = [...ch.joined, ...ch.left].map((p) => p.by).filter(Boolean);
+  if (!mp.peersSeen) {
+    // the first deliveries present people who were already here: name them, don't announce them
+    mp.peersSeen = true;
+    setTimeout(() => { if (mp) mp.settled = true; }, 2500);
+  }
+  if (!mp.settled) { refreshNames(ids).then(renderPlayerList); return; }
+  const announce = () => {
+    for (const p of ch.joined) if (!p.isMe && p.kind === 'viewer') addChat(null, `${peerName(p.by)} oyuna katıldı`, true);
+    for (const p of ch.left) if (!p.isMe && p.kind === 'viewer') addChat(null, `${peerName(p.by)} ayrıldı`, true);
+    renderPlayerList();
+  };
+  if (ids.length && capUser) refreshNames(ids).then(announce); else announce();
+}
+function onHit(m) {
+  if (!mp || m.sameTab || !m.data) return;
+  const me = mp.room.peers().find((p) => p.sameTab);
+  if (!me || m.data.to !== me.peer) return;
+  const dmg = Math.max(0, Math.min(8, Number(m.data.dmg) || 0));
+  const fx = Number(m.data.fx), fz = Number(m.data.fz);
+  damage(dmg, 'player', { pos: { x: Number.isFinite(fx) ? fx : player.pos.x - 0.01, z: Number.isFinite(fz) ? fz : player.pos.z } });
+}
+// ---- chat ----
+function addChat(by, text, system) {
+  const p = document.createElement('p');
+  if (system) { p.className = 'sys'; p.textContent = text; }
+  else { const s = document.createElement('strong'); s.textContent = peerName(by); p.append(s, document.createTextNode(text)); }
+  chatLog.append(p);
+  while (chatLog.children.length > 8) chatLog.firstChild.remove();
+  setTimeout(() => p.classList.add('old'), 12000);
+}
+function onChat(m) {
+  if (!mp || !m.data) return;
+  const t = String(m.data.t || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 200);
+  if (t) { addChat(m.by, t, false); if (!m.sameTab) sfx('pop'); }
+}
+function openChat() {
+  if (!mp || state !== 'playing') return;
+  state = 'chat'; releaseKeys();
+  chatBox.hidden = false; document.body.classList.add('chatting');
+  if (document.pointerLockElement) document.exitPointerLock();
+  chatInput.value = ''; chatInput.focus(); setTimeout(() => { if (state === 'chat') chatInput.focus(); }, 0);
+}
+function closeChat() {
+  if (state !== 'chat') return;
+  chatBox.hidden = true; document.body.classList.remove('chatting'); chatInput.blur();
+  play();
+}
+chatBox.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const t = chatInput.value.trim().slice(0, 200);
+  if (t && mp) mp.room.emit('chat', { t }).catch((err) => addChat(null, err && err.code === 'not_permitted' ? 'Bu dünyada mesaj gönderme iznin yok.' : 'Mesaj gönderilemedi.', true));
+  closeChat();
+});
+chatInput.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); closeChat(); } });
+$('tChat').addEventListener('click', openChat);
+
+/* =====================================================================
    Main loop
    ===================================================================== */
 let last = performance.now(), fpsAcc = 0, fpsN = 0, fps = 0, infoAcc = 0, unloadTick = 0;
@@ -2493,14 +2940,22 @@ function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   if (core) schedule();
   if (++unloadTick % 90 === 0) unloadFar();
-  const active = state === 'playing' || state === 'inventory';
+  const active = state === 'playing' || state === 'inventory' || state === 'chat';
   const ready = !!core && chunkReadyAt(player.pos.x, player.pos.z);
   if (ready && pendingSpawn) placeOnSurface();
   updateDragHold();
   if (active && ready && !pendingSpawn) { updatePlayer(dt); survivalTick(dt); }
-  if (active) { updateMobs(dt); spawnTick(dt); updateDrops(dt, now); updatePrimed(dt, now); tickGrowth(dt); weatherTick(dt); }
+  if (active) { updateMobs(dt); spawnTick(dt); updateDrops(dt, now); updatePrimed(dt, now); tickGrowth(dt); if (!mp) weatherTick(dt); }
+  if (mp) { mpTick(dt, now); updateRemotes(dt); }
   else if (state === 'menu' && !reduceMotion) player.yaw += dt * 0.04;
-  if (state !== 'paused' && state !== 'loading') {
+  if (mp && mp.world && typeof mp.world.t0 === 'number') {
+    const el = Math.max(0, Date.now() / 1000 - mp.world.t0), dc = Math.floor(el / DAY_LEN) + 1;
+    dayT = (el / DAY_LEN) % 1; lastDayT = dayT;
+    if (dc > dayCount && state === 'playing') toast(`${dc}. gün`);
+    dayCount = dc;
+    const slotW = Math.floor(el / 240), hv = Math.sin(slotW * 12.9898 + (seed % 1000) * 78.233) * 43758.5453;
+    rain = (hv - Math.floor(hv)) < 0.3;
+  } else if (state !== 'paused' && state !== 'loading') {
     dayT = (dayT + dt / DAY_LEN) % 1;
     if (dayT < lastDayT) { dayCount++; if (state === 'playing') toast(`${dayCount}. gün`); }
     lastDayT = dayT;
@@ -2550,7 +3005,7 @@ function frame(now) {
       `Gün    ${dayCount}   Saat ${hh}:${mm}   ${rain ? 'Yağmurlu' : 'Açık'}   ${fps} FPS\n` +
       `Bölge  ${bio}   Işık gök ${v >> 4} · blok ${v & 15}\n` +
       `Parça  ${meshed} çizili / ${chunks.size} yüklü   ${pool.sync ? 'tek iş parçacığı' : pool.workers.length + ' işçi'}\n` +
-      `Canlı  ${mobs.length}   Yerde eşya ${drops.length}\n` +
+      `Canlı  ${mobs.length}   Yerde eşya ${drops.length}${mp ? '   Oyuncu ' + (remotes.size + 1) : ''}\n` +
       `Hedef  ${target ? DEF[target.id].n : '—'}`;
   }
 }
@@ -2579,39 +3034,53 @@ function newWorld(s) {
   save();
 }
 
-function start(data) {
-  initPool();
-  const saved = data && data.seed != null ? data : loadSave();
-  if (saved && saved.rd) renderDist = Math.max(3, Math.min(16, saved.rd));
-  rdEl.value = renderDist; $('rdOut').textContent = renderDist;
-  if (saved && saved.sound === false) { soundOn = false; $('snd').checked = false; }
-  state = 'menu';
+const validSlot = (s) => s && (isBlock(s[0]) || ITEM[s[0]]) ? { id: s[0], n: s[1], d: s[2] } : null;
+function applyPlayerSave(saved) {
+  inv.fill(null); armor[0] = null; growing.clear(); slot = 0;
+  Object.assign(player, { vel: { x: 0, y: 0, z: 0 }, fly: false, hp: 20, hunger: 20, sat: 5, exh: 0, air: 15, dead: false, fallStart: null, fire: 0 });
+  if (!saved) { player.pos = { x: spawnPt.x, y: H - 2, z: spawnPt.z }; pendingSpawn = true; setMode('survival'); invChanged(); return; }
+  if (saved.spawn && Number.isFinite(saved.spawn.x)) spawnPt = saved.spawn;
+  const p = Array.isArray(saved.pos) ? saved.pos : null;
+  player.pos = p ? { x: p[0], y: p[1], z: p[2] } : { x: spawnPt.x, y: H - 2, z: spawnPt.z }; pendingSpawn = !p;
+  Object.assign(player, { yaw: saved.yaw || 0, pitch: saved.pitch || 0, fly: !!saved.fly, hp: saved.hp != null ? saved.hp : 20, hunger: saved.hunger != null ? saved.hunger : 20, sat: saved.sat || 0, air: saved.air != null ? saved.air : 15, dead: !!saved.dead });
+  (saved.inv || []).forEach((s, i) => { if (i < 36) inv[i] = validSlot(s); });
+  armor[0] = validSlot(saved.armor);
+  for (const k of (saved.growing || [])) growing.add(k);
+  slot = saved.slot >= 0 && saved.slot < 9 ? saved.slot : 0;
+  setMode(saved.mode === 'creative' ? 'creative' : 'survival');
+  invChanged();
+}
+function loadSingle(saved) {
   if (!saved) {
     newWorld(Math.floor(Math.random() * 1e9));
     setMode('survival');
-  } else {
-    setupWorld(saved.seed);
-    edits.clear();
-    for (const k in (saved.edits || {})) edits.set(+k, new Map(saved.edits[k]));
-    spawnPt = saved.spawn || findSpawn();
-    const p = saved.pos || [spawnPt.x, H - 2, spawnPt.z];
-    player.pos = { x: p[0], y: p[1], z: p[2] }; pendingSpawn = !saved.pos;
-    Object.assign(player, { yaw: saved.yaw || 0, pitch: saved.pitch || 0, fly: !!saved.fly, hp: saved.hp != null ? saved.hp : 20, hunger: saved.hunger != null ? saved.hunger : 20, sat: saved.sat || 0, air: saved.air != null ? saved.air : 15, dead: !!saved.dead });
-    if (typeof saved.t === 'number') dayT = lastDayT = saved.t;
-    dayCount = saved.day || 1;
-    const valid = (s) => s && (isBlock(s[0]) || ITEM[s[0]]) ? { id: s[0], n: s[1], d: s[2] } : null;
-    (saved.inv || []).forEach((s, i) => { inv[i] = valid(s); });
-    armor[0] = valid(saved.armor);
-    chests.clear(); for (const [k, a] of (saved.chests || [])) chests.set(k, a.map(valid));
-    growing.clear(); for (const k of (saved.growing || [])) growing.add(k);
-    rain = !!saved.rain; rainLevel = rain ? 1 : 0; rainTimer = saved.rainTimer || 300;
-    slot = saved.slot >= 0 && saved.slot < 9 ? saved.slot : 0;
-    setMode(saved.mode === 'creative' ? 'creative' : 'survival');
+    return;
   }
+  setupWorld(saved.seed);
+  edits.clear();
+  for (const k in (saved.edits || {})) edits.set(+k, new Map(saved.edits[k]));
+  spawnPt = saved.spawn || findSpawn();
+  if (typeof saved.t === 'number') dayT = lastDayT = saved.t;
+  dayCount = saved.day || 1;
+  chests.clear(); for (const [k, a] of (saved.chests || [])) chests.set(k, a.map(validSlot));
+  rain = !!saved.rain; rainLevel = rain ? 1 : 0; rainTimer = saved.rainTimer || 300;
+  applyPlayerSave(saved);
+}
+function start(data) {
+  initPool();
+  const saved = data && data.seed != null ? data : loadSave();
+  const settings = loadJSON(SETTINGS_KEY) || {};
+  const rd = settings.rd || (saved && saved.rd);
+  if (rd) renderDist = Math.max(3, Math.min(16, rd));
+  rdEl.value = renderDist; $('rdOut').textContent = renderDist;
+  if (settings.sound === false || (saved && saved.sound === false)) { soundOn = false; $('snd').checked = false; }
+  if (settings.last) { lastMpCode = settings.last; $('mpCode').value = settings.last; }
+  state = 'menu';
+  loadSingle(saved);
   renderHotbar(); setHand(heldId()); drawStats();
   playBtn.disabled = false;
   playBtn.textContent = saved ? 'Devam et' : 'Oyna';
-  if (window.claude && window.claude.hot && window.claude.hot.snapshot) window.claude.hot.snapshot(snapshot);
+  renderMpBox();
 }
 
 requestAnimationFrame(frame);
