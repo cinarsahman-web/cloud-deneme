@@ -371,7 +371,7 @@ function VoxelCore(seed, T) {
         }
       }
     };
-    vein(COAL_ORE, 16, 8, 5, 80); vein(IRON_ORE, 9, 5, 3, 60); if (r() < 0.6) vein(DIAMOND_ORE, 1, 5, 2, 16);
+    vein(COAL_ORE, 16, 8, 5, 80); vein(IRON_ORE, 9, 5, 3, 60); vein(DIAMOND_ORE, 3, 6, 2, 28);
     // trees: candidates around the chunk so canopies cross chunk borders deterministically
     for (let wz = z0 - 2; wz < z0 + 18; wz++) for (let wx = x0 - 2; wx < x0 + 18; wx++) {
       const t = hash(wx, wz, 1);
