@@ -1030,7 +1030,7 @@ function updateRain(dt, cp) {
   rainOut = bio === 2 ? 0 : rainLevel * (outdoors ? 1 : 0.3);
   rainMesh.visible = show;
   if (!show) return;
-  const snow = bio === 3, speed = snow ? 3 : 20, len = snow ? 0.12 : 0.6, n = Math.floor(RAIN_N * rainLevel);
+  const snow = bio === 3, speed = snow ? 3 : 20, len = snow ? 0.22 : 0.6, n = Math.floor(RAIN_N * rainLevel);
   rainMat.color.setHex(snow ? 0xf4f8ff : 0xa8bcd8); rainMat.opacity = (snow ? 0.9 : 0.5) * Math.min(1, rainLevel * 1.5);
   for (let i = 0; i < RAIN_N; i++) {
     let x = rainHead[i * 3], y = rainHead[i * 3 + 1], z = rainHead[i * 3 + 2];
@@ -1291,8 +1291,8 @@ function shadedBox(w, h, d, color) {
 
 // hand
 const handRoot = new THREE.Group(); camera.add(handRoot);
-const handBlockMat = new THREE.MeshBasicMaterial({ map: tex, vertexColors: true, alphaTest: 0.5, depthTest: false, fog: false });
-const handArm = new THREE.Mesh(shadedBox(0.14, 0.14, 0.55, 0xd9a27a), new THREE.MeshBasicMaterial({ vertexColors: true, depthTest: false, fog: false }));
+const handBlockMat = new THREE.MeshBasicMaterial({ map: tex, vertexColors: true, alphaTest: 0.5, depthTest: false, depthWrite: false, transparent: true, fog: false });
+const handArm = new THREE.Mesh(shadedBox(0.14, 0.14, 0.55, 0xd9a27a), new THREE.MeshBasicMaterial({ vertexColors: true, depthTest: false, depthWrite: false, transparent: true, fog: false }));
 const flatMats = {};
 let handObj = null, handKey = -1, swing = 0;
 function setHand(id) {
@@ -1306,7 +1306,7 @@ function setHand(id) {
     handObj = new THREE.Mesh(blockGeo(id), handBlockMat);
     handObj.scale.setScalar(0.26); handObj.position.set(0.5, -0.42, -0.9); handObj.rotation.set(0.25, 0.75, 0);
   } else {
-    const mat = flatMats[id] || (flatMats[id] = new THREE.MeshBasicMaterial({ map: iconTex(id), alphaTest: 0.5, side: THREE.DoubleSide, depthTest: false, fog: false }));
+    const mat = flatMats[id] || (flatMats[id] = new THREE.MeshBasicMaterial({ map: iconTex(id), alphaTest: 0.5, side: THREE.DoubleSide, depthTest: false, depthWrite: false, transparent: true, fog: false }));
     handObj = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5), mat);
     handObj.position.set(0.48, -0.36, -0.8); handObj.rotation.set(0, -0.6, toolOf(id) ? -0.2 : 0);
   }

@@ -31,3 +31,11 @@ Tarayıcıda çalışan, sıfırdan yazılmış Minecraft benzeri bir voksel oyu
 - Blok değişikliklerinde yalnızca etkilenen parçalar öncelikli olarak yeniden çizilir.
 - Görüş mesafesi ayarlanabilir (3–16 parça); sis bu mesafeye göre ayarlanır.
 - Worker kullanılamazsa aynı kod ana iş parçacığında zaman bütçesiyle çalışır.
+
+## Test
+`tests/full_test.js` oyunun bir test kopyasını Playwright ile açar ve son eklenen özelliklerin hepsini (creeper, koyun, TNT, yatak, gün sayacı, tarım, fidan, sandık, zırh, lav, kova, kaktüs, hava durumu, kayıt) gerçek oyun fonksiyonları ve arayüz üzerinden dener; ekran görüntülerini `shots/` klasörüne yazar.
+
+```
+npm pack three@0.128.0 && tar xzf three-0.128.0.tgz package/build/three.min.js
+node tests/full_test.js
+```
